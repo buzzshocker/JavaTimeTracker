@@ -1,6 +1,7 @@
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -9,11 +10,13 @@ import java.time.ZoneId;
 import java.util.stream.Stream;
 
 public class TM {
-    List<TaskDetails> tasks = new ArrayList<TaskDetails>();   public static void main(String[] args) {
-       String function = args[0];
-
+    static List<TaskDetails> tasks;
+    static Log taskLog;
+    public static void main(String[] args) {
+        String function = args[0];
+        List<TaskDetails> tasks = new ArrayList<TaskDetails>();
         final String filename = "taskLog.csv";
-        Log taskLog = new Log(filename);
+        taskLog = new Log(filename);
         tasks = taskLog.logRead();
         switch (function) {
             case "start":
@@ -34,19 +37,34 @@ public class TM {
 
     public void start(String name) {
         LocalDateTime now = LocalDateTime.now(ZoneId.systemDefault());
-        Optional<String> detail = tasks
-                .stream()
-                .filter(t->t.getName().equals(name))
-                .map(TaskDetails::getDescription)
-                .findFirst();
-        if(!detail.isPresent()) {
-            detail =
-        }
-        TaskDetails details = new TaskDetails(name, now.toString(),
-              "start");
-
-
+        Map<String, String> sizeAndDesc = tasks.stream()
+                .filter(t -> t.getName().equals(name))
+                .collect(Collectors.toMap(
+                        TaskDetails::getSize, TaskDetails::getDescription));
+        String size = sizeAndDesc.keySet().
+                toArray(new String[0])[0];
+        String description = sizeAndDesc.get(size);
+        TaskDetails taskDetails = new TaskDetails(name, now.toString(),
+                "start", size, description);
+        tasks.add(taskDetails);
+        taskLog.logWrite(tasks);
     }
+
+    public void stop(String name) {
+        LocalDateTime now = LocalDateTime.now(ZoneId.systemDefault());
+        Map<String, String> sizeAndDesc = tasks.stream()
+                .filter(t -> t.getName().equals(name))
+                .collect(Collectors.toMap(
+                        TaskDetails::getSize, TaskDetails::getDescription));
+        String size = sizeAndDesc.keySet().
+                toArray(new String[0])[0];
+        String description = sizeAndDesc.get(size);
+        TaskDetails taskDetails = new TaskDetails(name, now.toString(),
+                "stop", size, description);
+        tasks.add(taskDetails);
+        taskLog.logWrite(tasks);
+    }
+
 
 }
 
@@ -97,24 +115,26 @@ class Log {
 
   //need to change this code to our own parser
   private Function<String, TaskDetails> mapToTaskDetails = (line) -> {
-        String[] fields = line.split(",");
+      String[] fields = line.split(",");
+      String name = fields[0].trim();
+      String time = fields[1].trim();
+      String stage = fields[2].trim();
+      String size;
+      String description;
 
-        String name = fields[0].trim();
-        String time = fields[1].trim();
-        String stage = fields[2].trim();
+      if (fields.length >= 4) {
+        size = fields[3].trim();
+      } else {
+          size = "";
+      }
+      if (fields.length >= 5) {
+          description = fields[4].trim();
+      } else {
+          description = "";
+      }
 
-        TaskDetails task = new TaskDetails(name, time, stage);
-
-        // Set other fields if available
-        if (fields.length >= 4) {
-            task.setSize(fields[3].trim());
-        }
-        if (fields.length >= 5) {
-            task.setDescription(fields[4].trim());
-        }
-
-        return task;
-    };
+      return new TaskDetails(name, time, stage, size, description);
+  };
 }
 
 class TaskDetails {
@@ -168,11 +188,11 @@ class TaskDetails {
     }
 
     public String getSize() {
-        return size;
+        return size != null ? size : "";
     }
 
     public String getDescription() {
-        return description;
+        return description != null ? description : "";
     }
 }
 
