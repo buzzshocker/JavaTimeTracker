@@ -4,6 +4,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.time.LocalDateTime;
@@ -293,8 +294,7 @@ class Log {
 
       String name = fields[0].trim();
 
-      timeUtils timeUt = new timeUtils();
-      LocalDateTime time = timeUt.getStringTime(fields[1].trim());
+      LocalDateTime time = timeUtils.getStringTime(fields[1].trim());
 
       String stage = fields[2].trim();
 
