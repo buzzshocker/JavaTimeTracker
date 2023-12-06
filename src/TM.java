@@ -53,6 +53,7 @@ public class TM {
     }
 
     public static void stop(String name) {
+        ///TODO: Make this a function...
         LocalDateTime now = LocalDateTime.now(ZoneId.systemDefault());
         Map<String, String> sizeAndDesc = tasks.stream()
                 .filter(t -> t.getName().equals(name))
@@ -63,6 +64,7 @@ public class TM {
         String description = sizeAndDesc.get(size);
         TaskDetails taskDetails = new TaskDetails(name, now.toString(),
                 "stop", size, description);
+        ///Upto this point
         tasks.add(taskDetails);
         taskLog.logWrite(tasks);
     }
@@ -105,7 +107,24 @@ public class TM {
         taskLog.logWrite(tasks);
     }
 
-    
+        public static void size(String name, String size) {
+        LocalDateTime now = LocalDateTime.now(ZoneId.systemDefault());
+        List<TaskDetails> newTaskDetails = tasks.stream()
+                .map(t -> {
+                    if (t.getName().equals(name)) {
+                        t.setSize(size);
+                    }
+                    return t;
+                })
+                .toList();
+        tasks.clear();
+        tasks.addAll(newTaskDetails);
+        ///Upto this point
+    }
+
+
+
+
 }
 
 class Log {
