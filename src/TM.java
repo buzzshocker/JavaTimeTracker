@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
+import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -21,19 +22,18 @@ public class TM {
         switch (function) {
             case "start":
                 start(args[1]);
-                // implement start function
             case "stop":
                 stop(args[1]);
-                // implement stop function
             case "summary":
-
+                
             case "delete":
-
+                delete(args[1]);
             case "size":
 
             case "rename":
-
+                rename(args[1], args[2]);
             case "describe":
+                describe(args[1], args[2], args[3]);
         }
     }
 
@@ -67,7 +67,45 @@ public class TM {
         taskLog.logWrite(tasks);
     }
 
+    public static void delete(String name) {
+        List<TaskDetails> newTaskDetails = tasks.stream()
+                .filter(t -> !t.getName().equals(name))
+                .collect(Collectors.toList());
+        tasks.clear();
+        tasks.addAll(newTaskDetails);
+        taskLog.logWrite(tasks);
+    }
 
+    public static void rename(String name, String newName) {
+        List<TaskDetails> newTaskDetails = tasks.stream()
+                .map(t -> {
+                    if (t.getName().equals(name)) {
+                        t.setName(newName);
+                    }
+                    return t;
+                })
+                .collect(Collectors.toList());
+        tasks.clear();
+        tasks.addAll(newTaskDetails);
+        taskLog.logWrite(tasks);
+    }
+
+    public static void describe(String name, String description, String size) {
+        List<TaskDetails> newTaskDetails = tasks.stream()
+                .map(t -> {
+                    if (t.getName().equals(name)) {
+                        t.setDescription(description);
+                        t.setSize(size);
+                    }
+                    return t;
+                })
+                .collect(Collectors.toList());
+        tasks.clear();
+        tasks.addAll(newTaskDetails);
+        taskLog.logWrite(tasks);
+    }
+
+    
 }
 
 class Log {
@@ -115,7 +153,6 @@ class Log {
       return tasks;
   }
 
-  //need to change this code to our own parser
   private Function<String, TaskDetails> mapToTaskDetails = (line) -> {
       String[] fields = line.split(",");
       String name = fields[0].trim();
@@ -140,6 +177,7 @@ class Log {
 }
 
 class TaskDetails {
+    //change it to stringbuilder
     private String name;
     private String time;
     private String stage;
@@ -171,8 +209,12 @@ class TaskDetails {
         this.size = size;
     }
 
+    public void setName(String name) {
+        this.name = name;
+    }
+
     public void setDescription(String description) {
-        this.description = description;
+        this.description = this.description + description;
     }
 
     // Provide getters as needed
