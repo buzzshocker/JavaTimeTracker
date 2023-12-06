@@ -3,39 +3,42 @@ import java.time.Duration;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 import java.util.function.Function;
-import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.stream.Stream;
 
 public class TM {
     static List<TaskDetails> tasks;
     static Log taskLog;
     public static void main(String[] args) {
         String function = args[0];
-        List<TaskDetails> tasks = new ArrayList<TaskDetails>();
+        tasks = new ArrayList<>();
         final String filename = "taskLog.csv";
         taskLog = new Log(filename);
         tasks = taskLog.logRead();
+        //System.out.println(args[0]);
         switch (function) {
             case "start":
                 start(args[1]);
+                break;
             case "stop":
                 stop(args[1]);
+                break;
             case "summary":
-                
+                break;
             case "delete":
                 delete(args[1]);
+                break;
             case "size":
-
+                size(args[1], args[2]);
+                break;
             case "rename":
                 rename(args[1], args[2]);
+                break;
             case "describe":
                 describe(args[1], args[2], args[3]);
+                break;
         }
     }
 
@@ -50,9 +53,11 @@ public class TM {
         if (!extractedTasks.isEmpty()) {
             /// Possible error handling if there is already a task with the same
             // name that hasn't been stopped yet.
-            size = extractedTasks.getLast().getSize();
-            description = extractedTasks.getLast().getDescription();
-            timeSpent = extractedTasks.getLast().getTimeSpentTillNow();
+            TaskDetails lastTask = extractedTasks
+                    .get(extractedTasks.size() - 1);
+            size = lastTask.getSize();
+            description = lastTask.getDescription();
+            timeSpent = lastTask.getTimeSpentTillNow();
         } else {
             size = "";
             description = "";
@@ -71,7 +76,7 @@ public class TM {
                 .filter(t -> t.getName().equals(name))
                 .collect(Collectors.toList());
 
-        TaskDetails taskDetails = extractedTasks.getLast();
+        TaskDetails taskDetails = extractedTasks.get(extractedTasks.size() - 1);
         if (taskDetails.getStage().equals("start")) {
             timeUtils utils = new timeUtils();
             taskDetails.setTimeSpentTillNow(utils.
@@ -87,7 +92,7 @@ public class TM {
         TaskDetails newTask = new TaskDetails(name, now, "stop",
                 timeSpent, size, description);
         ///Upto this point
-        tasks.add(taskDetails);
+        tasks.add(newTask);
         taskLog.logWrite(tasks);
     }
 
@@ -137,8 +142,7 @@ public class TM {
                         t.setSize(size);
                     }
                     return t;
-                })
-                .toList();
+                }).collect(Collectors.toList());
         tasks.clear();
         tasks.addAll(newTaskDetails);
         ///Upto this point
@@ -149,7 +153,7 @@ public class TM {
 class timeUtils {
     public LocalDateTime getStringTime(String time) {
         DateTimeFormatter formatter =
-                DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+                DateTimeFormatter.ISO_LOCAL_DATE_TIME;
         return LocalDateTime.parse(time, formatter);
     }
 
@@ -216,25 +220,19 @@ class Log {
 
   private Function<String, TaskDetails> mapToTaskDetails = (line) -> {
       String[] fields = line.split(",");
+
       String name = fields[0].trim();
+
       timeUtils timeUt = new timeUtils();
       LocalDateTime time = timeUt.getStringTime(fields[1].trim());
+
       String stage = fields[2].trim();
+
       long timeSpent = Long.parseLong(fields[3].trim());
-      String size;
-      String description;
 
+      String size = fields[4].trim();
 
-      if (fields.length >= 5) {
-        size = fields[4].trim();
-      } else {
-          size = "";
-      }
-      if (fields.length >= 6) {
-          description = fields[5].trim();
-      } else {
-          description = "";
-      }
+      String description = fields[5].trim();
 
       return new TaskDetails(name, time, stage, timeSpent, size, description);
   };
@@ -255,6 +253,8 @@ class TaskDetails {
         this.time = time;
         this.stage = stage;
         this.timeSpentTillNow += timeSpent;
+        this.description = description != null ? description : "";
+        this.size = size != null ? size : "";
     }
     @Override
     public String toString() {
@@ -269,8 +269,8 @@ class TaskDetails {
     }
 
     public String toCSVString() {
-        return name + "," + time.toString() + "," + stage + ","  +
-                timeSpentTillNow + "," + size + "," + description ;
+        return name + ", " + time.toString() + ", " + stage + ", "  +
+                timeSpentTillNow + ", " + size + ", " + description + " \n";
     }
     // Provide setters for other fields
     public void setSize(String size) {
