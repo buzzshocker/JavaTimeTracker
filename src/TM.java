@@ -20,9 +20,11 @@ public class TM {
         tasks = taskLog.logRead();
         switch (function) {
             case "start":
+                start(args[1]);
                 // implement start function
             case "stop":
-
+                stop(args[1]);
+                // implement stop function
             case "summary":
 
             case "delete":
@@ -35,7 +37,7 @@ public class TM {
         }
     }
 
-    public void start(String name) {
+    public static void start(String name) {
         LocalDateTime now = LocalDateTime.now(ZoneId.systemDefault());
         Map<String, String> sizeAndDesc = tasks.stream()
                 .filter(t -> t.getName().equals(name))
@@ -50,7 +52,7 @@ public class TM {
         taskLog.logWrite(tasks);
     }
 
-    public void stop(String name) {
+    public static void stop(String name) {
         LocalDateTime now = LocalDateTime.now(ZoneId.systemDefault());
         Map<String, String> sizeAndDesc = tasks.stream()
                 .filter(t -> t.getName().equals(name))
