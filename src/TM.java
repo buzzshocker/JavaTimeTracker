@@ -122,9 +122,47 @@ public class TM {
         ///Upto this point
     }
 
+}
 
+class Summary{
+  private static Summary summary;
 
+  public static Summary getInstance() {
+    if (summary == null) {
+      summary = new Summary();
+    }
+    return summary;
+  }
 
+  private static void sizeStatistics(){
+    
+  }
+
+  private static void printTask(TaskDetails task){
+    System.out.println("Task Name: " + task.getName());
+    if(task.getSize() != ""){
+      System.out.println("Task Size: " + task.getSize());
+    }
+    System.out.println("Task Description: " + task.getDescription());
+  }
+
+  public static void allSummary(List<TaskDetails> tasks){
+    tasks.stream().forEach(t -> printTask(t));
+  }
+
+  public static void oneTask(List<TaskDetails> tasks, String task){
+    tasks.stream()
+      .filter(t -> 
+        t.getName().equals(task) && 
+        t.getStage().equals("stop"))
+      .forEach(t -> printTask(t));
+  }
+
+  public static void oneSize(List<TaskDetails> tasks, String size){
+    tasks.stream()
+      .collect(Collectors
+      .groupingBy());     
+  }
 }
 
 class Log {
