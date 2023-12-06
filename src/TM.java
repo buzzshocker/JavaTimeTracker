@@ -78,10 +78,9 @@ public class TM {
                 .filter(t -> t.getName().equals(name))
                 .collect(Collectors.toList());
 
-        TaskDetails taskDetails = extractedTasks.getLast();
+        TaskDetails taskDetails = extractedTasks.get(extractedTasks.size() - 1);
         if (taskDetails.getStage().equals("start")) {
-            timeUtils utils = new timeUtils();
-            taskDetails.setTimeSpentTillNow(utils.
+            taskDetails.setTimeSpentTillNow(timeUtils.
                     getTimeSpent(taskDetails.getTime(), now));
         } else {
             ///error handling
@@ -209,7 +208,7 @@ class Summary{
 
   private static void printTask(TaskDetails task){
     System.out.println("Task Name: " + task.getName());
-    if(task.getSize() != ""){
+    if(task.getSize().isEmpty()){
       System.out.println("Task Size: " + task.getSize());
     }
     System.out.println("Task Description: " + task.getDescription());
