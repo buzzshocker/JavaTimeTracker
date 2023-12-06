@@ -2,6 +2,7 @@ import java.io.*;
 import java.time.Duration;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -76,7 +77,7 @@ public class TM {
                 .filter(t -> t.getName().equals(name))
                 .collect(Collectors.toList());
 
-        TaskDetails taskDetails = extractedTasks.get(extractedTasks.size() - 1);
+        TaskDetails taskDetails = extractedTasks.getLast();
         if (taskDetails.getStage().equals("start")) {
             timeUtils utils = new timeUtils();
             taskDetails.setTimeSpentTillNow(utils.
@@ -151,18 +152,18 @@ public class TM {
 }
 
 class timeUtils {
-    public LocalDateTime getStringTime(String time) {
+    public static LocalDateTime getStringTime(String time) {
         DateTimeFormatter formatter =
                 DateTimeFormatter.ISO_LOCAL_DATE_TIME;
         return LocalDateTime.parse(time, formatter);
     }
 
-    public long getTimeSpent(LocalDateTime start, LocalDateTime end) {
+    public static long getTimeSpent(LocalDateTime start, LocalDateTime end) {
         Duration duration = Duration.between(start, end);
         return Math.abs(duration.toSeconds());
     }
 
-    public String computeTime(long timeSpent) {
+    public static String computeTime(long timeSpent) {
         long hours = timeSpent/3600;
         timeSpent = timeSpent - (hours*3600);
 
@@ -171,6 +172,75 @@ class timeUtils {
 
         return (hours + ":" + minutes + ":" + timeSpent);
     }
+}
+
+class Summary{
+  private static Summary summary;
+
+  public static Summary getInstance() {
+    if (summary == null) {
+      summary = new Summary();
+    }
+    return summary;
+  }
+
+  private static void sizeStatistics(String size, List<TaskDetails> tasks){
+    Map<String, List<TaskDetails>> taskSpecific = tasks.stream()
+      .collect(Collectors
+      .groupingBy(TaskDetails::getName)
+    );
+
+    if(taskSpecific.size() >= 2){
+      List<Long> time = taskSpecific.values().stream().map(
+      t -> t.get(t.size() - 1).getTimeSpentTillNow()
+      ).
+      collect(Collectors.toList());
+
+      System.out.println("The max time spent on tasks of size " + size + " is "
+       + Collections.max(time));
+      System.out.println("The min time spent on tasks of size " + size + " is "
+      + Collections.min(time));
+      System.out.println("The average time spent on tasks of size "
+      + size + " is " + time.stream().mapToLong(t -> t).average().getAsDouble());
+    }
+
+  }
+
+  private static void printTask(TaskDetails task){
+    System.out.println("Task Name: " + task.getName());
+    if(task.getSize() != ""){
+      System.out.println("Task Size: " + task.getSize());
+    }
+    System.out.println("Task Description: " + task.getDescription());
+    System.out.println("Task Time: " + timeUtils.computeTime(task.getTimeSpentTillNow()));
+  }
+
+  public static void allSummary(List<TaskDetails> tasks){
+  }
+
+  public static void oneTask(List<TaskDetails> tasks, String task){
+    List<TaskDetails> specificTask = tasks.stream()
+      .filter(t ->
+        t.getName().equals(task) &&
+        t.getStage().equals("stop"))
+      .collect(Collectors.toList());
+    //make a function for getting the array size
+    printTask(specificTask.get(specificTask.size() - 1));
+
+  }
+
+  public static void oneSize(List<TaskDetails> tasks, String size){
+    Map<String, List<TaskDetails>> sizeToTaskDetails = tasks.stream()
+      .filter(t ->
+        t.getSize().equals(size) &&
+        t.getStage().equals("stop"))
+        .collect(Collectors.groupingBy(TaskDetails::getSize));
+
+    sizeToTaskDetails.forEach(
+      (k,v) ->
+        sizeStatistics(size, tasks)
+    );
+  }
 }
 
 class Log {
