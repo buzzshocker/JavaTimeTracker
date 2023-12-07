@@ -10,38 +10,52 @@ import java.time.ZoneId;
 public class TM extends errorHandler{
     static List<TaskDetails> tasks;
     static Log taskLog;
-
+    final static String filename = "taskLog.csv";
     public static void main(String[] args) {
-        String function = args[0];
+        // parser creates an instance which we are sending with an argument args
+        Parser parser = new Parser(args);
         tasks = new ArrayList<>();
-        final String filename = "taskLog.csv";
         taskLog = new Log(filename);
         tasks = taskLog.logRead();
-        switch (function) {
+        run(parser);   
+    }
+
+    public static void run(Parser parse){
+      switch (parse.getFunction()) {
             case "start":
-                start(args[1]);
+                start(parse.getName());
                 break;
             case "stop":
-                stop(args[1]);
+                stop(parse.getName());
                 break;
             case "summary":
-                break;
-            case "delete":
-                delete(args[1]);
-                break;
-            case "size":
-                size(args[1], args[2]);
-                break;
-            case "rename":
-                rename(args[1], args[2]);
-                break;
-            case "describe":
-                if (args.length == 4) {
-                    describe(args[1], args[2], args[3]);
+                if (parse.getSizeOfArgs() == 2) {
+                    Summary.allSummary(tasks);
+                } else if (parse.getSizeOfArgs() == 3) {
+                    Summary.oneTask(tasks, parse.getName());
                 } else {
-                    describe(args[1], args[2], "");
+                    Summary.oneSize(tasks, parse.getSize());
                 }
                 break;
+            case "delete":
+                delete(parse.getName());
+                break;
+            case "size":
+                size(parse.getName(), parse.getSize());
+                break;
+            case "rename":
+                rename(parse.getName(), parse.getNewName());
+                break;
+            case "describe":
+                if (parse.getSizeOfArgs() == 4) {
+                    describe(parse.getName(), parse.getDescription(), parse.getSize());
+                } else {
+                    describe(parse.getName(), parse.getDescription(), "");
+                }
+                break;
+            default: 
+                System.out.println("Invalid command");
+                System.exit(1);
         }
     }
 
@@ -142,6 +156,38 @@ public class TM extends errorHandler{
         taskLog.logWrite(tasks);
     }
 
+}
+
+class Parser{
+    private static String[] args;
+
+    public Parser(String[] args) {
+        Parser.args = args;
+    }
+
+    public String getFunction() {
+        return args[0];
+    }
+
+    public String getName() {
+        return args[1];
+    }
+
+    public String getDescription() {
+        return args[2];
+    }
+
+    public String getSize() {
+        return args[2];
+    }
+
+    public String getNewName() {
+        return args[2];
+    }
+
+    public Integer getSizeOfArgs(){
+        return args.length;
+    }
 }
 
 class errorHandler {
