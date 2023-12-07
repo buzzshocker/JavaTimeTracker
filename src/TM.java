@@ -45,42 +45,31 @@ public class TM extends errorHandler{
         }
     }
 
-    public static void start(String name) {
+    private static void start(String name) {
         LocalDateTime now = LocalDateTime.now(ZoneId.systemDefault());
-        List<TaskDetails> extractedTasks =
+        List<TaskDetails> extractTasks =
                 DSutils.getNameMatchedTasks(tasks, name, false, "");
-        String size;
-        String description;
-        long timeSpent;
-        if (!extractedTasks.isEmpty()) {
-            TaskDetails lastTask = extractedTasks
-                    .get(extractedTasks.size() - 1);
+        if (!extractTasks.isEmpty()) {
+            TaskDetails lastTask = extractTasks.get(extractTasks.size() - 1);
             if (lastTask.getStage().equals("start")) {
                 startErrorHandler(name);
             }
-            /// Any possible way to make this smaller?
-            size = lastTask.getSize();
-            description = lastTask.getDescription();
-            timeSpent = lastTask.getTimeSpentTillNow();
+            addToTaskLog(new TaskDetails(name, now, "start",
+                    lastTask.getTimeSpentTillNow(), lastTask.getSize(),
+                    lastTask.getDescription()));
         } else {
-            size = "";
-            description = "";
-            timeSpent = 0;
+             addToTaskLog(new TaskDetails(name, now, "start", 0L,
+                     "", ""));
         }
-        TaskDetails taskDetails = new TaskDetails(name, now, "start",
-                timeSpent, size, description);
-        addToTaskLog(taskDetails);
     }
 
-    public static void stop(String name) {
+    private static void stop(String name) {
         LocalDateTime now = LocalDateTime.now(ZoneId.systemDefault());
         List<TaskDetails> extractedTasks =
                 DSutils.getNameMatchedTasks(tasks, name, false, "");
-
         if (extractedTasks.isEmpty()) {
             stopErrorHandler(name);
         }
-
         TaskDetails taskDetails = extractedTasks.get(extractedTasks.size() - 1);
         if (taskDetails.getStage().equals("start")) {
             taskDetails.setTimeSpentTillNow(timeUtils.
@@ -88,31 +77,26 @@ public class TM extends errorHandler{
         } else {
             stopErrorHandler(name);
         }
-        /// Any possible way to make this smaller?
-        String description = taskDetails.getDescription();
-        String size = taskDetails.getSize();
-        long timeSpent = taskDetails.getTimeSpentTillNow();
-
-        TaskDetails newTask = new TaskDetails(name, now, "stop",
-                timeSpent, size, description);
-        addToTaskLog(newTask);
+        addToTaskLog(new TaskDetails(name, now, "stop",
+                taskDetails.getTimeSpentTillNow(), taskDetails.getSize(),
+                taskDetails.getDescription()));
     }
 
-    public static void delete(String name) {
+    private static void delete(String name) {
         validateValueInList(name, tasks);
         List<TaskDetails> newTaskDetails =
                 DSutils.getNameMatchedTasks(tasks, name, true, "");
         setTaskLog(newTaskDetails);
     }
 
-    public static void rename(String name, String newName) {
+    private static void rename(String name, String newName) {
         validateValueInList(name, tasks);
         List<TaskDetails> newTaskDetails =
                 DSutils.renameTasks(tasks, name, newName);
         setTaskLog(newTaskDetails);
     }
 
-    public static void describe(String name, String description, String size) {
+    private static void describe(String name, String description, String size) {
         validateValueInList(name, tasks);
         size = DSutils.checkForSize(name, tasks, size);
         List<TaskDetails> newTaskDetails =
@@ -121,7 +105,7 @@ public class TM extends errorHandler{
         setTaskLog(newTaskDetails);
     }
 
-    public static void size(String name, String size) {
+    private static void size(String name, String size) {
         validateValueInList(name, tasks);
         LocalDateTime now = LocalDateTime.now(ZoneId.systemDefault());
         sizeErrorHandler(name, size);
