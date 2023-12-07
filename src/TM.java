@@ -1,25 +1,22 @@
 import java.io.*;
 import java.time.Duration;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 
-public class TM {
+public class TM extends errorHandler{
     static List<TaskDetails> tasks;
     static Log taskLog;
+
     public static void main(String[] args) {
         String function = args[0];
         tasks = new ArrayList<>();
         final String filename = "taskLog.csv";
         taskLog = new Log(filename);
         tasks = taskLog.logRead();
-        //System.out.println(args[0]);
         switch (function) {
             case "start":
                 start(args[1]);
@@ -39,24 +36,29 @@ public class TM {
                 rename(args[1], args[2]);
                 break;
             case "describe":
-                describe(args[1], args[2], args[3]);
+                if (args.length == 4) {
+                    describe(args[1], args[2], args[3]);
+                } else {
+                    describe(args[1], args[2], "");
+                }
                 break;
         }
     }
 
     public static void start(String name) {
         LocalDateTime now = LocalDateTime.now(ZoneId.systemDefault());
-        List<TaskDetails> extractedTasks = tasks.stream()
-                .filter(t -> t.getName().equals(name))
-                .collect(Collectors.toList());
+        List<TaskDetails> extractedTasks =
+                DSutils.getNameMatchedTasks(tasks, name, false, "");
         String size;
         String description;
         long timeSpent;
         if (!extractedTasks.isEmpty()) {
-            /// Possible error handling if there is already a task with the same
-            // name that hasn't been stopped yet.
             TaskDetails lastTask = extractedTasks
                     .get(extractedTasks.size() - 1);
+            if (lastTask.getStage().equals("start")) {
+                startErrorHandler(name);
+            }
+            /// Any possible way to make this smaller?
             size = lastTask.getSize();
             description = lastTask.getDescription();
             timeSpent = lastTask.getTimeSpentTillNow();
@@ -67,91 +69,182 @@ public class TM {
         }
         TaskDetails taskDetails = new TaskDetails(name, now, "start",
                 timeSpent, size, description);
-        tasks.add(taskDetails);
-        taskLog.logWrite(tasks);
+        addToTaskLog(taskDetails);
     }
 
     public static void stop(String name) {
-        ///TODO: Make this a function...
         LocalDateTime now = LocalDateTime.now(ZoneId.systemDefault());
-        List<TaskDetails> extractedTasks = tasks.stream()
-                .filter(t -> t.getName().equals(name))
-                .collect(Collectors.toList());
+        List<TaskDetails> extractedTasks =
+                DSutils.getNameMatchedTasks(tasks, name, false, "");
+
+        if (extractedTasks.isEmpty()) {
+            stopErrorHandler(name);
+        }
 
         TaskDetails taskDetails = extractedTasks.get(extractedTasks.size() - 1);
         if (taskDetails.getStage().equals("start")) {
             taskDetails.setTimeSpentTillNow(timeUtils.
                     getTimeSpent(taskDetails.getTime(), now));
         } else {
-            ///error handling
+            stopErrorHandler(name);
         }
-
+        /// Any possible way to make this smaller?
         String description = taskDetails.getDescription();
         String size = taskDetails.getSize();
         long timeSpent = taskDetails.getTimeSpentTillNow();
 
         TaskDetails newTask = new TaskDetails(name, now, "stop",
                 timeSpent, size, description);
-        ///Upto this point
-        tasks.add(newTask);
-        taskLog.logWrite(tasks);
+        addToTaskLog(newTask);
     }
 
     public static void delete(String name) {
-        List<TaskDetails> newTaskDetails = tasks.stream()
-                .filter(t -> !t.getName().equals(name))
-                .collect(Collectors.toList());
-        tasks.clear();
-        tasks.addAll(newTaskDetails);
-        taskLog.logWrite(tasks);
+        validateValueInList(name, tasks);
+        List<TaskDetails> newTaskDetails =
+                DSutils.getNameMatchedTasks(tasks, name, true, "");
+        setTaskLog(newTaskDetails);
     }
 
     public static void rename(String name, String newName) {
-        List<TaskDetails> newTaskDetails = tasks.stream()
-                .map(t -> {
-                    if (t.getName().equals(name)) {
-                        t.setName(newName);
-                    }
-                    return t;
-                })
-                .collect(Collectors.toList());
-        tasks.clear();
-        tasks.addAll(newTaskDetails);
-        taskLog.logWrite(tasks);
+        validateValueInList(name, tasks);
+        List<TaskDetails> newTaskDetails =
+                DSutils.renameTasks(tasks, name, newName);
+        setTaskLog(newTaskDetails);
     }
 
     public static void describe(String name, String description, String size) {
-        List<TaskDetails> newTaskDetails = tasks.stream()
+        validateValueInList(name, tasks);
+        List<TaskDetails> newTaskDetails =
+                DSutils.describeTasks(tasks, name, description,
+                        size.toUpperCase());
+        setTaskLog(newTaskDetails);
+    }
+
+    public static void size(String name, String size) {
+        validateValueInList(name, tasks);
+        LocalDateTime now = LocalDateTime.now(ZoneId.systemDefault());
+        sizeErrorHandler(name, size);
+        List<TaskDetails> newTaskDetails =
+                DSutils.resizeTasks(tasks, name, size.toUpperCase());
+        setTaskLog(newTaskDetails);
+    }
+
+    public static void summary() {}
+
+    private static void setTaskLog(List<TaskDetails> updatedTaskDetails) {
+        tasks.clear();
+        tasks.addAll(updatedTaskDetails);
+        taskLog.logWrite(tasks);
+    }
+
+    private static void addToTaskLog(TaskDetails task) {
+        tasks.add(task);
+        taskLog.logWrite(tasks);
+    }
+
+}
+
+class errorHandler {
+    private static Set<String> sizes = new HashSet<String>();
+    public errorHandler() {
+        sizes.add("S");
+        sizes.add("M");
+        sizes.add("L");
+        sizes.add("XL");
+    }
+
+    public static void stopErrorHandler(String name) {
+        System.out.println(name + ": Task has not been started yet.");
+        System.exit(1);
+    }
+
+    public static void startErrorHandler(String name) {
+        System.out.println(name + ": Task has already been started.");
+        System.exit(1);
+    }
+
+    public static void validateValueInList(String name,
+                                           List<TaskDetails> tasks) {
+        boolean isPresent = tasks.stream()
+                .anyMatch(task -> task.getName().equals(name));
+         if (!isPresent) {
+            System.out.println(name + ": Task does not exist.");
+            System.exit(1);
+         }
+    }
+
+    public static void sizeErrorHandler(String name, String size) {
+        if (!sizes.contains(size)) {
+            System.out.println(name + ": Invalid size - " + size);
+        }
+    }
+}
+final class DSutils {
+    private DSutils() {}
+
+    public static List<TaskDetails>
+    getNameMatchedTasks(List<TaskDetails> tasks, String predicate1,
+                     boolean isSpecial, String predicate2) {
+
+        if (predicate2.isEmpty()) {
+            if (isSpecial) {
+                return tasks.stream()
+                        .filter(t -> !t.getName().equals(predicate1))
+                        .collect(Collectors.toList());
+            }
+        }
+        if (predicate2.equals("stop")) {
+            if (!isSpecial) {
+                return tasks.stream().filter(t -> t.getName().equals(predicate1)
+                        && t.getStage().equals("stop"))
+                        .collect(Collectors.toList());
+            }
+            return tasks.stream().filter(t -> t.getSize().equals(predicate1) &&
+                    t.getStage().equals("stop")).collect(Collectors.toList());
+        }
+
+        return tasks.stream()
+                .filter(t -> t.getName().equals(predicate1))
+                .collect(Collectors.toList());
+    }
+
+    public static List<TaskDetails>
+    renameTasks(List<TaskDetails> tasks, String oldName, String newName) {
+        return tasks.stream()
+                .map(t -> {
+                    if (t.getName().equals(oldName)) {
+                        t.setName(newName);
+                }
+                    return t;
+                }).collect(Collectors.toList());
+    }
+
+    public static List<TaskDetails>
+    describeTasks(List<TaskDetails> tasks, String name, String description,
+                  String size) {
+        return tasks.stream()
                 .map(t -> {
                     if (t.getName().equals(name)) {
                         t.setDescription(description);
                         t.setSize(size);
                     }
                     return t;
-                })
-                .collect(Collectors.toList());
-        tasks.clear();
-        tasks.addAll(newTaskDetails);
-        taskLog.logWrite(tasks);
+                }).collect(Collectors.toList());
     }
 
-        public static void size(String name, String size) {
-        LocalDateTime now = LocalDateTime.now(ZoneId.systemDefault());
-        List<TaskDetails> newTaskDetails = tasks.stream()
+    public static List<TaskDetails>
+    resizeTasks(List<TaskDetails> tasks, String name, String size) {
+        return tasks.stream()
                 .map(t -> {
                     if (t.getName().equals(name)) {
                         t.setSize(size);
                     }
                     return t;
                 }).collect(Collectors.toList());
-        tasks.clear();
-        tasks.addAll(newTaskDetails);
-        ///Upto this point
     }
-
 }
-
-class timeUtils {
+final class timeUtils {
+    private timeUtils() {}
     public static LocalDateTime getStringTime(String time) {
         DateTimeFormatter formatter =
                 DateTimeFormatter.ISO_LOCAL_DATE_TIME;
@@ -174,7 +267,7 @@ class timeUtils {
     }
 }
 
-class Summary{
+class Summary {
   private static Summary summary;
 
   public static Summary getInstance() {
@@ -190,56 +283,48 @@ class Summary{
       .groupingBy(TaskDetails::getName)
     );
 
-    if(taskSpecific.size() >= 2){
+    if (taskSpecific.size() >= 2) {
       List<Long> time = taskSpecific.values().stream().map(
-      t -> t.get(t.size() - 1).getTimeSpentTillNow()
-      ).
-      collect(Collectors.toList());
+      t -> t.get(t.size() - 1).getTimeSpentTillNow())
+              .collect(Collectors.toList());
 
       System.out.println("The max time spent on tasks of size " + size + " is "
        + Collections.max(time));
       System.out.println("The min time spent on tasks of size " + size + " is "
       + Collections.min(time));
       System.out.println("The average time spent on tasks of size "
-      + size + " is " + time.stream().mapToLong(t -> t).average().getAsDouble());
+      + size + " is " + time.stream().mapToLong(t -> t).average()
+              .getAsDouble());
     }
 
   }
 
-  private static void printTask(TaskDetails task){
+  private static void printTask(TaskDetails task) {
     System.out.println("Task Name: " + task.getName());
-    if(task.getSize().isEmpty()){
+    if (task.getSize().isEmpty()) {
       System.out.println("Task Size: " + task.getSize());
     }
     System.out.println("Task Description: " + task.getDescription());
-    System.out.println("Task Time: " + timeUtils.computeTime(task.getTimeSpentTillNow()));
+    System.out.println("Task Time: " + timeUtils
+            .computeTime(task.getTimeSpentTillNow()));
   }
 
-  public static void allSummary(List<TaskDetails> tasks){
+  public static void allSummary(List<TaskDetails> tasks) {
+      tasks.forEach(Summary::printTask);
   }
 
   public static void oneTask(List<TaskDetails> tasks, String task){
-    List<TaskDetails> specificTask = tasks.stream()
-      .filter(t ->
-        t.getName().equals(task) &&
-        t.getStage().equals("stop"))
-      .collect(Collectors.toList());
+    List<TaskDetails> specificTask = DSutils.getNameMatchedTasks(tasks, task,
+            false, "stop");
     //make a function for getting the array size
     printTask(specificTask.get(specificTask.size() - 1));
-
   }
 
-  public static void oneSize(List<TaskDetails> tasks, String size){
-    Map<String, List<TaskDetails>> sizeToTaskDetails = tasks.stream()
-      .filter(t ->
-        t.getSize().equals(size) &&
-        t.getStage().equals("stop"))
-        .collect(Collectors.groupingBy(TaskDetails::getSize));
-
-    sizeToTaskDetails.forEach(
-      (k,v) ->
-        sizeStatistics(size, tasks)
-    );
+  public static void oneSize(List<TaskDetails> tasks, String size) {
+      List<TaskDetails> tasksOfSpecifiedSize =
+              DSutils.getNameMatchedTasks(tasks, size, true, "stop");
+      tasksOfSpecifiedSize.forEach(Summary::printTask);
+      sizeStatistics(size, tasksOfSpecifiedSize);
   }
 }
 
@@ -351,7 +436,11 @@ class TaskDetails {
     }
 
     public void setDescription(String description) {
-        this.description = this.description + description;
+        if (!this.description.isEmpty()) {
+            this.description = this.description + "; " + description;;
+        } else {
+            this.description = description;
+        }
     }
 
     // Provide getters as needed
