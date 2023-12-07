@@ -114,6 +114,7 @@ public class TM extends errorHandler{
 
     public static void describe(String name, String description, String size) {
         validateValueInList(name, tasks);
+        size = DSutils.checkForSize(name, tasks, size);
         List<TaskDetails> newTaskDetails =
                 DSutils.describeTasks(tasks, name, description,
                         size.toUpperCase());
@@ -145,14 +146,15 @@ public class TM extends errorHandler{
 }
 
 class errorHandler {
-    private static Set<String> sizes = new HashSet<String>();
-    public errorHandler() {
+    private static final Set<String> sizes = new HashSet<>();
+    public errorHandler() {}
+
+    private static void setSizes() {
         sizes.add("S");
         sizes.add("M");
         sizes.add("L");
         sizes.add("XL");
     }
-
     public static void stopErrorHandler(String name) {
         System.out.println(name + ": Task has not been started yet.");
         System.exit(1);
@@ -174,8 +176,11 @@ class errorHandler {
     }
 
     public static void sizeErrorHandler(String name, String size) {
-        if (!sizes.contains(size)) {
-            System.out.println(name + ": Invalid size - " + size);
+        setSizes();
+        String upperCaseSize = size.toUpperCase();
+        if (!sizes.contains(upperCaseSize)) {
+            System.out.println(name + ": Invalid size - " + upperCaseSize);
+            System.exit(1);
         }
     }
 }
@@ -230,6 +235,21 @@ final class DSutils {
                     }
                     return t;
                 }).collect(Collectors.toList());
+    }
+
+    public static String checkForSize(String name, List<TaskDetails> tasks,
+                                      String size) {
+        if (!size.isEmpty()) {
+            return size;
+        }
+        List<TaskDetails> matchedTasks =
+                getNameMatchedTasks(tasks, name, false, "");
+
+        TaskDetails task = matchedTasks.get(matchedTasks.size() - 1);
+        if (!task.getSize().isEmpty()) {
+            return task.getSize();
+        }
+        return "";
     }
 
     public static List<TaskDetails>
@@ -393,7 +413,6 @@ class Log {
 }
 
 class TaskDetails {
-    //change it to stringbuilder
     private String name;
     private LocalDateTime time;
     private String stage;
@@ -437,7 +456,7 @@ class TaskDetails {
 
     public void setDescription(String description) {
         if (!this.description.isEmpty()) {
-            this.description = this.description + "; " + description;;
+            this.description = this.description + " " + description;;
         } else {
             this.description = description;
         }
@@ -472,5 +491,6 @@ class TaskDetails {
     public void setTimeSpentTillNow(long timeSpent) {
         this.timeSpentTillNow += timeSpent;
     }
+
 }
 
