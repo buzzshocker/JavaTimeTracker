@@ -364,11 +364,11 @@ class Summary {
   }
 
   private static void printTask(TaskDetails task) {
-    System.out.println("Task Name: " + task.getName());
+    System.out.println("\nTask Name: " + task.getName());
     System.out.println("Task Size: " + task.getSize());
     System.out.println("Task Description: " + task.getDescription());
     System.out.println("Task Time: " + timeUtils
-            .computeTime(task.getTimeSpentTillNow()));
+            .computeTime(task.getTimeSpentTillNow()) + "\n");
   }
 
     public static void allSummary(List<TaskDetails> tasks) {
