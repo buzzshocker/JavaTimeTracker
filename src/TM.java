@@ -8,7 +8,6 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 
 public class TM extends errorHandler{
-
     static List<TaskDetails> tasks;
     static Log taskLog;
     final static String filename = "taskLog.csv";
@@ -36,7 +35,7 @@ public class TM extends errorHandler{
                 if (parse.getSizeOfArgs() == 1) {
                     Summary.allSummary(tasks);
                 } else if (parse.getSizeOfArgs() == 2 &&
-                        !errorHandler.checkIfSizeExists(errorHandler
+                        !errorHandler.doesSizeExist(errorHandler
                                         .Size.values(), parse.getSummarySize())
                 ) {
                     Summary.oneTask(tasks, parse.getName());
@@ -190,14 +189,13 @@ class Parser{
 }
 
 class errorHandler {
-    private static final Set<String> sizes = new HashSet<>();
     public errorHandler() {}
 
     enum Size{
         S, M, L, XL
     }
 
-    public static boolean checkIfSizeExists(Size[] sizes , String size){
+    public static boolean doesSizeExist(Size[] sizes , String size){
         for (Size value : sizes) {
             if (value.name().equals(size.toUpperCase())) {
                 return true;
@@ -206,12 +204,6 @@ class errorHandler {
         return false;
     }
 
-    private static void setSizes() {
-        sizes.add("S");
-        sizes.add("M");
-        sizes.add("L");
-        sizes.add("XL");
-    }
     public static void stopErrorHandler(String name) {
         System.out.println(name + ": Task has not been started yet.");
         System.exit(1);
@@ -233,10 +225,8 @@ class errorHandler {
     }
 
     public static void sizeErrorHandler(String name, String size) {
-        setSizes();
-        String upperCaseSize = size.toUpperCase();
-        if (!sizes.contains(upperCaseSize)) {
-            System.out.println(name + ": Invalid size - " + upperCaseSize);
+        if (!doesSizeExist(errorHandler.Size.values(), size)) {
+            System.out.println(name + ": Invalid size - " + size);
             System.exit(1);
         }
     }
@@ -348,13 +338,6 @@ final class timeUtils {
 class Summary {
   private static Summary summary;
 
-  public static Summary getInstance() {
-    if (summary == null) {
-      summary = new Summary();
-    }
-    return summary;
-  }
-
   private static void sizeStatistics(String size, List<TaskDetails> tasks){
     Map<String, List<TaskDetails>> taskSpecific = tasks.stream()
       .collect(Collectors
@@ -405,7 +388,6 @@ class Summary {
   public static void oneTask(List<TaskDetails> tasks, String task){
     List<TaskDetails> specificTask = DSutils.getNameMatchedTasks(tasks, task,
             false, "stop");
-    //make a function for getting the array size
     printTask(specificTask.get(specificTask.size() - 1));
   }
 
@@ -462,19 +444,13 @@ class Log {
       return tasks;
   }
 
-  private Function<String, TaskDetails> mapToTaskDetails = (line) -> {
+  private final Function<String, TaskDetails> mapToTaskDetails = (line) -> {
       String[] fields = line.split(",");
-
       String name = fields[0].trim();
-
       LocalDateTime time = timeUtils.getStringTime(fields[1].trim());
-
       String stage = fields[2].trim();
-
       long timeSpent = Long.parseLong(fields[3].trim());
-
       String size = fields[4].trim();
-
       String description = fields[5].trim();
 
       return new TaskDetails(name, time, stage, timeSpent, size, description);
@@ -498,23 +474,12 @@ class TaskDetails {
         this.description = description != null ? description : "";
         this.size = size != null ? size : "";
     }
-    @Override
-    public String toString() {
-        return "TaskDetails{" +
-                "name='" + name + '\'' +
-                ", time='" + time.toString() + '\'' +
-                ", stage='" + stage + '\'' +
-                ", size='" + size + '\'' +
-                ", description='" + description + '\'' +
-                ", timeSpentTillNow=" + timeSpentTillNow +
-                '}';
-    }
 
     public String toCSVString() {
         return name + ", " + time.toString() + ", " + stage + ", "  +
                 timeSpentTillNow + ", " + size + ", " + description + " \n";
     }
-    // Provide setters for other fields
+
     public void setSize(String size) {
         this.size = size;
     }
@@ -530,8 +495,6 @@ class TaskDetails {
             this.description = description;
         }
     }
-
-    // Provide getters as needed
 
     public String getName() {
         return name;
@@ -560,6 +523,5 @@ class TaskDetails {
     public void setTimeSpentTillNow(long timeSpent) {
         this.timeSpentTillNow += timeSpent;
     }
-
 }
 
