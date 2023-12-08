@@ -8,9 +8,11 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 
 public class TM extends errorHandler{
+
     static List<TaskDetails> tasks;
     static Log taskLog;
     final static String filename = "taskLog.csv";
+  
     public static void main(String[] args) {
         Parser parser = new Parser(args);
         tasks = new ArrayList<>();
@@ -134,8 +136,6 @@ public class TM extends errorHandler{
         setTaskLog(newTaskDetails);
     }
 
-    public static void summary() {}
-
     private static void setTaskLog(List<TaskDetails> updatedTaskDetails) {
         tasks.clear();
         tasks.addAll(updatedTaskDetails);
@@ -237,6 +237,7 @@ class errorHandler {
         }
     }
 }
+
 final class DSutils {
     private DSutils() {}
 
