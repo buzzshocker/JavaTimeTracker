@@ -164,6 +164,10 @@ class Parser{
         return args[1];
     }
 
+    public String getSummarySize() {
+        return args[1];
+    }
+
     public String getDescription() {
         return args[2];
     }
