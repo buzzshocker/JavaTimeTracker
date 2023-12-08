@@ -409,6 +409,7 @@ class Summary {
                 DSutils.getNameMatchedTasks(tasks, size, true, "stop");
         sizeStatistics(size, tasksOfSpecifiedSize);
     }
+
 }
 
 class Log {
