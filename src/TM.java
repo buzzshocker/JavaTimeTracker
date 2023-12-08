@@ -29,9 +29,9 @@ public class TM extends errorHandler{
                 stop(parse.getName());
                 break;
             case "summary":
-                if (parse.getSizeOfArgs() == 2) {
+                if (parse.getSizeOfArgs() == 1) {
                     Summary.allSummary(tasks);
-                } else if (parse.getSizeOfArgs() == 3) {
+                } else if (parse.getSizeOfArgs() == 2) {
                     Summary.oneTask(tasks, parse.getName());
                 } else {
                     Summary.oneSize(tasks, parse.getSize());
