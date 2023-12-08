@@ -6,6 +6,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.function.Predicate;
 
 public class TM extends errorHandler{
     static List<TaskDetails> tasks;
@@ -16,21 +17,31 @@ public class TM extends errorHandler{
       tasks = new ArrayList<>();
       taskLog = Log.getInstance(filename);
       tasks = taskLog.logRead();
+      errorHandler.validateNumberOfArgs(parser.getSizeOfArgs(), 
+                            (args1) -> args1 >= 1, "main", 
+                            "Invalid number of arguments");
       run(parser);
     }
 
     private static void run(Parser parse){
       switch (parse.getFunction()) {
         case "start":
-          if(parse.getSizeOfArgs() != 2) {
-            errorHandler.printError("start", "Invalid number of arguments");
-          }
+          errorHandler.validateNumberOfArgs(parse.getSizeOfArgs(), 
+                                    (args) -> args == 2, "start", 
+                                    "Invalid number of arguments");
           start(parse.getName());
           break;
         case "stop":
+          errorHandler.validateNumberOfArgs(parse.getSizeOfArgs(), 
+                                    (args) -> args == 2, "stop", 
+                                    "Invalid number of arguments");
           stop(parse.getName());
-          break;
+          break;                                                                 
         case "summary":
+          errorHandler.validateNumberOfArgs(parse.getSizeOfArgs(), 
+                                    (args) -> args == 2 || args == 1,
+                                    "summary", 
+                                    "Invalid number of arguments");
           if (parse.getSizeOfArgs() == 1) {
             Summary.allSummary(tasks);
           } else if (parse.getSizeOfArgs() == 2 && 
@@ -42,15 +53,28 @@ public class TM extends errorHandler{
           }
           break;
         case "delete":
+          errorHandler.validateNumberOfArgs(parse.getSizeOfArgs(), 
+                                      (args) -> args == 2, "delete", 
+                                      "Invalid number of arguments");
           delete(parse.getName());
           break;
         case "size":
+          errorHandler.validateNumberOfArgs(parse.getSizeOfArgs(), 
+                                      (args) -> args == 3, "size", 
+                                      "Invalid number of arguments");
           size(parse.getName(), parse.getSize());
           break;
         case "rename":
+          errorHandler.validateNumberOfArgs(parse.getSizeOfArgs(), 
+                                      (args) -> args == 3, "rename", 
+                                      "Invalid number of arguments");
           rename(parse.getName(), parse.getNewName());
           break;
         case "describe":
+          errorHandler.validateNumberOfArgs(parse.getSizeOfArgs(), 
+                                      (args) -> args == 3 || args == 4, 
+                                      "describe", 
+                                      "Invalid number of arguments");
           if (parse.getSizeOfArgs() == 4) {
             describe(parse.getName(), parse.getDescription(),
               parse.getDescribeSize());
@@ -59,8 +83,8 @@ public class TM extends errorHandler{
           }
           break;
         default:
-          System.out.println("Invalid command");
-          System.exit(1);
+          errorHandler.printError(parse.getFunction(), 
+          "Invalid function");
       }
     }
 
@@ -204,8 +228,16 @@ class errorHandler {
   }
 
   protected static void printError(String name, String message) {
-    System.out.println(name + " : " + message);
+    System.out.println(name + ": " + message);
     System.exit(1);
+  }
+
+  public static void validateNumberOfArgs(Integer Args, 
+                                        Predicate<Integer> predicate,      
+                                        String function, String message){
+    if(!predicate.test(Args)) {
+      printError(function, message);  
+    }
   }
 
   public static void stopErrorHandler(String name) {
