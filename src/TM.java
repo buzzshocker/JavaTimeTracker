@@ -31,10 +31,13 @@ public class TM extends errorHandler{
             case "summary":
                 if (parse.getSizeOfArgs() == 1) {
                     Summary.allSummary(tasks);
-                } else if (parse.getSizeOfArgs() == 2) {
+                } else if (parse.getSizeOfArgs() == 2 && 
+                    !errorHandler.checkIfSizeExists(errorHandler.Size.values(), 
+                    parse.getSummarySize())
+                ) {
                     Summary.oneTask(tasks, parse.getName());
                 } else {
-                    Summary.oneSize(tasks, parse.getSize());
+                    Summary.oneSize(tasks, parse.getSummarySize());
                 }
                 break;
             case "delete":
@@ -158,6 +161,10 @@ class Parser{
         return args[1];
     }
 
+    public String getSummarySize(){
+      return args[1];
+    }
+
     public String getDescription() {
         return args[2];
     }
@@ -183,12 +190,26 @@ class errorHandler {
     private static final Set<String> sizes = new HashSet<>();
     public errorHandler() {}
 
+    enum Size{
+      S, M, L, XL
+    }
+
+    public static boolean checkIfSizeExists(Size[] sizes , String size){
+      for (Size value : sizes) {
+          if (value.name().equals(size.toUpperCase())) {
+            return true;
+          }
+        }
+      return false;
+    }
+
     private static void setSizes() {
         sizes.add("S");
         sizes.add("M");
         sizes.add("L");
         sizes.add("XL");
     }
+
     public static void stopErrorHandler(String name) {
         System.out.println(name + ": Task has not been started yet.");
         System.exit(1);
@@ -297,6 +318,7 @@ final class DSutils {
                 }).collect(Collectors.toList());
     }
 }
+
 final class timeUtils {
     private timeUtils() {}
     public static LocalDateTime getStringTime(String time) {
@@ -343,12 +365,12 @@ class Summary {
               .collect(Collectors.toList());
 
       System.out.println("The max time spent on tasks of size " + size + " is "
-       + Collections.max(time));
+       + timeUtils.computeTime(Collections.max(time)));
       System.out.println("The min time spent on tasks of size " + size + " is "
-      + Collections.min(time));
+      + timeUtils.computeTime(Collections.min(time)));
+      long fine_time = (long) time.stream().mapToLong(t -> t).average().getAsDouble();
       System.out.println("The average time spent on tasks of size "
-      + size + " is " + time.stream().mapToLong(t -> t).average()
-              .getAsDouble());
+      + size + " is " + timeUtils.computeTime(fine_time));
     }
 
   }
@@ -364,7 +386,16 @@ class Summary {
   }
 
   public static void allSummary(List<TaskDetails> tasks) {
-      tasks.forEach(Summary::printTask);
+    Map<String, List<TaskDetails>> taskSpecific = tasks.stream()
+      .collect(Collectors
+      .groupingBy(TaskDetails::getName)
+    );
+
+    taskSpecific.forEach((name, task) -> {
+        printTask(task.get(task.size() - 1));
+      }
+    );
+    
   }
 
   public static void oneTask(List<TaskDetails> tasks, String task){
@@ -377,7 +408,7 @@ class Summary {
   public static void oneSize(List<TaskDetails> tasks, String size) {
       List<TaskDetails> tasksOfSpecifiedSize =
               DSutils.getNameMatchedTasks(tasks, size, true, "stop");
-      tasksOfSpecifiedSize.forEach(Summary::printTask);
+      // tasksOfSpecifiedSize.forEach(Summary::printTask);
       sizeStatistics(size, tasksOfSpecifiedSize);
   }
 }
@@ -527,4 +558,3 @@ class TaskDetails {
     }
 
 }
-
