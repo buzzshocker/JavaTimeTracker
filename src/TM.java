@@ -48,7 +48,7 @@ public class TM extends errorHandler{
                 break;
             case "describe":
                 if (parse.getSizeOfArgs() == 4) {
-                    describe(parse.getName(), parse.getDescription(), parse.getSize());
+                    describe(parse.getName(), parse.getDescription(), parse.getDescribeSize());
                 } else {
                     describe(parse.getName(), parse.getDescription(), "");
                 }
@@ -164,6 +164,10 @@ class Parser{
 
     public String getSize() {
         return args[2];
+    }
+
+    public String getDescribeSize(){
+      return args[3];
     }
 
     public String getNewName() {
