@@ -22,6 +22,9 @@ public class TM extends errorHandler{
     private static void run(Parser parse){
       switch (parse.getFunction()) {
         case "start":
+          if(parse.getSizeOfArgs() != 2) {
+            errorHandler.printError("start", "Invalid number of arguments");
+          }
           start(parse.getName());
           break;
         case "stop":
@@ -110,26 +113,26 @@ public class TM extends errorHandler{
     }
 
     private static void delete(String name) {
-      validateValueInList(name, tasks);
+      validateTaskExists(name, tasks);
       setTaskLog(DSutils
         .getNameMatchedTasks(tasks, name, true, ""));
     }
 
     private static void rename(String name, String newName) {
-      validateValueInList(name, tasks);
+      validateTaskExists(name, tasks);
       setTaskLog(DSutils
         .renameTasks(tasks, name, newName));
     }
 
     private static void describe(String name, String description, String size) {
-      validateValueInList(name, tasks);
+      validateTaskExists(name, tasks);
       size = DSutils.checkForSize(name, tasks, size);
       setTaskLog(DSutils
         .describeTasks(tasks, name, description, size.toUpperCase()));
     }
 
     private static void size(String name, String size) {
-      validateValueInList(name, tasks);
+      validateTaskExists(name, tasks);
       sizeErrorHandler(name, size);
       setTaskLog(DSutils.resizeTasks(tasks, name, size.toUpperCase()));
     }
@@ -192,38 +195,38 @@ class errorHandler {
   }
 
   public static boolean doesSizeExist(Size[] sizes , String size){
-      for (Size value : sizes) {
-        if (value.name().equals(size.toUpperCase())) {
-          return true;
-        }
+    for (Size value : sizes) {
+      if (value.name().equals(size.toUpperCase())) {
+        return true;
       }
-      return false;
+    }
+    return false;
   }
 
-  private static void printError(String name, String message) {
-      System.out.println(name + ": " + message);
-      System.exit(1);
+  protected static void printError(String name, String message) {
+    System.out.println(name + " : " + message);
+    System.exit(1);
   }
 
   public static void stopErrorHandler(String name) {
-      printError(name, ": Task has not been started yet.");
+    printError(name, "Task has not been started yet.");
   }
 
   public static void startErrorHandler(String name) {
-      printError(name, ": Task has already been started.");
+    printError(name, "Task has already been started.");
   }
 
-  public static void validateValueInList(String name,List<TaskDetails> tasks){
+  public static void validateTaskExists(String name,List<TaskDetails> tasks){
     boolean isPresent = tasks.stream()
             .anyMatch(task -> task.getName().equals(name));
     if (!isPresent) {
-      printError(name,": Task does not exist.");
+      printError(name,"Task does not exist.");
     }
   }
 
   public static void sizeErrorHandler(String name, String size) {
     if (!doesSizeExist(errorHandler.Size.values(), size)) {
-      printError(name, ": Invalid size - " + size);
+      printError(name, "Invalid size - " + size);
     }
   }
 }
