@@ -12,16 +12,18 @@ public class TM extends errorHandler{
     static Log taskLog;
     final static String filename = "taskLog.csv";
     public static void main(String[] args) {
-        // parser creates an instance which we are sending with an argument args
         Parser parser = new Parser(args);
         tasks = new ArrayList<>();
         taskLog = new Log(filename);
         tasks = taskLog.logRead();
-        run(parser);   
+        run(parser);
     }
 
     public static void run(Parser parse){
-      switch (parse.getFunction()) {
+        switch (parse.getFunction()) {
+            case "":
+                System.out.println("Parse error: Please enter a command");
+                System.exit(1);
             case "start":
                 start(parse.getName());
                 break;
@@ -31,10 +33,13 @@ public class TM extends errorHandler{
             case "summary":
                 if (parse.getSizeOfArgs() == 1) {
                     Summary.allSummary(tasks);
-                } else if (parse.getSizeOfArgs() == 2) {
+                } else if (parse.getSizeOfArgs() == 2 &&
+                        !errorHandler.checkIfSizeExists(errorHandler
+                                        .Size.values(), parse.getSummarySize())
+                ) {
                     Summary.oneTask(tasks, parse.getName());
                 } else {
-                    Summary.oneSize(tasks, parse.getSize());
+                    Summary.oneSize(tasks, parse.getSummarySize());
                 }
                 break;
             case "delete":
@@ -48,12 +53,13 @@ public class TM extends errorHandler{
                 break;
             case "describe":
                 if (parse.getSizeOfArgs() == 4) {
-                    describe(parse.getName(), parse.getDescription(), parse.getDescribeSize());
+                    describe(parse.getName(), parse.getDescription(),
+                            parse.getDescribeSize());
                 } else {
                     describe(parse.getName(), parse.getDescription(), "");
                 }
                 break;
-            default: 
+            default:
                 System.out.println("Invalid command");
                 System.exit(1);
         }
@@ -72,8 +78,8 @@ public class TM extends errorHandler{
                     lastTask.getTimeSpentTillNow(), lastTask.getSize(),
                     lastTask.getDescription()));
         } else {
-             addToTaskLog(new TaskDetails(name, now, "start", 0L,
-                     "", ""));
+            addToTaskLog(new TaskDetails(name, now, "start", 0L,
+                    "", ""));
         }
     }
 
@@ -121,14 +127,11 @@ public class TM extends errorHandler{
 
     private static void size(String name, String size) {
         validateValueInList(name, tasks);
-        LocalDateTime now = LocalDateTime.now(ZoneId.systemDefault());
         sizeErrorHandler(name, size);
         List<TaskDetails> newTaskDetails =
                 DSutils.resizeTasks(tasks, name, size.toUpperCase());
         setTaskLog(newTaskDetails);
     }
-
-    public static void summary() {}
 
     private static void setTaskLog(List<TaskDetails> updatedTaskDetails) {
         tasks.clear();
@@ -140,7 +143,6 @@ public class TM extends errorHandler{
         tasks.add(task);
         taskLog.logWrite(tasks);
     }
-
 }
 
 class Parser{
@@ -151,10 +153,17 @@ class Parser{
     }
 
     public String getFunction() {
+        if (args.length == 0) {
+            return "";
+        }
         return args[0];
     }
 
     public String getName() {
+        return args[1];
+    }
+
+    public String getSummarySize(){
         return args[1];
     }
 
@@ -167,7 +176,7 @@ class Parser{
     }
 
     public String getDescribeSize(){
-      return args[3];
+        return args[3];
     }
 
     public String getNewName() {
@@ -183,12 +192,26 @@ class errorHandler {
     private static final Set<String> sizes = new HashSet<>();
     public errorHandler() {}
 
+    enum Size{
+        S, M, L, XL
+    }
+
+    public static boolean checkIfSizeExists(Size[] sizes , String size){
+        for (Size value : sizes) {
+            if (value.name().equals(size.toUpperCase())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static void setSizes() {
         sizes.add("S");
         sizes.add("M");
         sizes.add("L");
         sizes.add("XL");
     }
+
     public static void stopErrorHandler(String name) {
         System.out.println(name + ": Task has not been started yet.");
         System.exit(1);
@@ -203,10 +226,10 @@ class errorHandler {
                                            List<TaskDetails> tasks) {
         boolean isPresent = tasks.stream()
                 .anyMatch(task -> task.getName().equals(name));
-         if (!isPresent) {
+        if (!isPresent) {
             System.out.println(name + ": Task does not exist.");
             System.exit(1);
-         }
+        }
     }
 
     public static void sizeErrorHandler(String name, String size) {
@@ -223,7 +246,7 @@ final class DSutils {
 
     public static List<TaskDetails>
     getNameMatchedTasks(List<TaskDetails> tasks, String predicate1,
-                     boolean isSpecial, String predicate2) {
+                        boolean isSpecial, String predicate2) {
 
         if (predicate2.isEmpty()) {
             if (isSpecial) {
@@ -235,7 +258,7 @@ final class DSutils {
         if (predicate2.equals("stop")) {
             if (!isSpecial) {
                 return tasks.stream().filter(t -> t.getName().equals(predicate1)
-                        && t.getStage().equals("stop"))
+                                && t.getStage().equals("stop"))
                         .collect(Collectors.toList());
             }
             return tasks.stream().filter(t -> t.getSize().equals(predicate1) &&
@@ -253,7 +276,7 @@ final class DSutils {
                 .map(t -> {
                     if (t.getName().equals(oldName)) {
                         t.setName(newName);
-                }
+                    }
                     return t;
                 }).collect(Collectors.toList());
     }
@@ -297,11 +320,11 @@ final class DSutils {
                 }).collect(Collectors.toList());
     }
 }
+
 final class timeUtils {
     private timeUtils() {}
     public static LocalDateTime getStringTime(String time) {
-        DateTimeFormatter formatter =
-                DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+        DateTimeFormatter formatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
         return LocalDateTime.parse(time, formatter);
     }
 
@@ -322,128 +345,120 @@ final class timeUtils {
 }
 
 class Summary {
-  private static Summary summary;
 
-  public static Summary getInstance() {
-    if (summary == null) {
-      summary = new Summary();
-    }
-    return summary;
-  }
+    private static void sizeStatistics(String size, List<TaskDetails> tasks){
+        Map<String, List<TaskDetails>> taskSpecific = tasks.stream()
+                .collect(Collectors
+                        .groupingBy(TaskDetails::getName)
+                );
+        if (taskSpecific.size() >= 2) {
+            List<Long> time = taskSpecific.values().stream().map(
+                            t -> t.get(t.size() - 1).getTimeSpentTillNow())
+                    .collect(Collectors.toList());
 
-  private static void sizeStatistics(String size, List<TaskDetails> tasks){
-    Map<String, List<TaskDetails>> taskSpecific = tasks.stream()
-      .collect(Collectors
-      .groupingBy(TaskDetails::getName)
-    );
+            System.out.println("The max time spent on tasks of size "
+                    + size + " is "
+                    + timeUtils.computeTime(Collections.max(time)));
+            System.out.println("The min time spent on tasks of size "
+                    + size + " is "
+                    + timeUtils.computeTime(Collections.min(time)));
+            long fine_time = (long) time.stream().mapToLong(t -> t)
+                    .average().getAsDouble();
+            System.out.println("The average time spent on tasks of size "
+                    + size + " is " + timeUtils.computeTime(fine_time));
+        }
 
-    if (taskSpecific.size() >= 2) {
-      List<Long> time = taskSpecific.values().stream().map(
-      t -> t.get(t.size() - 1).getTimeSpentTillNow())
-              .collect(Collectors.toList());
-
-      System.out.println("The max time spent on tasks of size " + size + " is "
-       + Collections.max(time));
-      System.out.println("The min time spent on tasks of size " + size + " is "
-      + Collections.min(time));
-      System.out.println("The average time spent on tasks of size "
-      + size + " is " + time.stream().mapToLong(t -> t).average()
-              .getAsDouble());
     }
 
-  }
-
-  private static void printTask(TaskDetails task) {
-    System.out.println("Task Name: " + task.getName());
-    if (task.getSize().isEmpty()) {
-      System.out.println("Task Size: " + task.getSize());
+    private static void printTask(TaskDetails task) {
+        System.out.println("Task Name: " + task.getName());
+        if (task.getSize().isEmpty()) {
+            System.out.println("Task Size: " + task.getSize());
+        }
+        System.out.println("Task Description: " + task.getDescription());
+        System.out.println("Task Time: " + timeUtils
+                .computeTime(task.getTimeSpentTillNow()) + "\n");
     }
-    System.out.println("Task Description: " + task.getDescription());
-    System.out.println("Task Time: " + timeUtils
-            .computeTime(task.getTimeSpentTillNow()));
-  }
 
-  public static void allSummary(List<TaskDetails> tasks) {
-      tasks.forEach(Summary::printTask);
-  }
+    public static void allSummary(List<TaskDetails> tasks) {
+        Map<String, List<TaskDetails>> taskSpecific = tasks.stream()
+                .collect(Collectors
+                        .groupingBy(TaskDetails::getName)
+                );
+        taskSpecific.forEach((name, task) -> {
+                    printTask(task.get(task.size() - 1));
+                }
+        );
 
-  public static void oneTask(List<TaskDetails> tasks, String task){
-    List<TaskDetails> specificTask = DSutils.getNameMatchedTasks(tasks, task,
-            false, "stop");
-    //make a function for getting the array size
-    printTask(specificTask.get(specificTask.size() - 1));
-  }
+    }
 
-  public static void oneSize(List<TaskDetails> tasks, String size) {
-      List<TaskDetails> tasksOfSpecifiedSize =
-              DSutils.getNameMatchedTasks(tasks, size, true, "stop");
-      tasksOfSpecifiedSize.forEach(Summary::printTask);
-      sizeStatistics(size, tasksOfSpecifiedSize);
-  }
+    public static void oneTask(List<TaskDetails> tasks, String task){
+        List<TaskDetails> specificTask = DSutils.getNameMatchedTasks(tasks, task,
+                false, "stop");
+        printTask(specificTask.get(specificTask.size() - 1));
+    }
+
+    public static void oneSize(List<TaskDetails> tasks, String size) {
+        List<TaskDetails> tasksOfSpecifiedSize =
+                DSutils.getNameMatchedTasks(tasks, size, true, "stop");
+        sizeStatistics(size, tasksOfSpecifiedSize);
+    }
 }
 
 class Log {
-  private static File file;
-  private static String filename;
+    private static File file;
 
-  private void createCSV(File file) throws IOException {
-      try {
-          if (!file.exists()) {
-              file.createNewFile();
-          }
-      } catch (IOException e) {
-          throw new RuntimeException(e);
-      }
-  }
+    private void createCSV(File file) throws IOException {
+        try {
+            if (!file.exists()) {
+                file.createNewFile();
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
 
-  public Log(String filename) {
-      Log.file = new File(filename);
+    public Log(String filename) {
+        Log.file = new File(filename);
         try {
             createCSV(file);
         } catch (IOException e) {
             e.getMessage();
         }
 
-  }
+    }
 
-  public void logWrite(List<TaskDetails> tasks) {
-      try (BufferedWriter br = new BufferedWriter(new FileWriter(file))) {
-          for (TaskDetails details : tasks) {
-              br.write(details.toCSVString());
-          }
-      } catch (IOException e) {
-          e.printStackTrace();
-      }
-  }
+    public void logWrite(List<TaskDetails> tasks) {
+        try (BufferedWriter br = new BufferedWriter(new FileWriter(file))) {
+            for (TaskDetails details : tasks) {
+                br.write(details.toCSVString());
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 
+    public List<TaskDetails> logRead() {
+        List<TaskDetails> tasks = new ArrayList<>();
+        try (BufferedReader br = new BufferedReader(new FileReader(file))) {
+            tasks = br.lines().map(mapToTaskDetails).collect(Collectors.toList());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return tasks;
+    }
 
-  public List<TaskDetails> logRead() {
-      List<TaskDetails> tasks = new ArrayList<>();
-      try (BufferedReader br = new BufferedReader(new FileReader(file))) {
-          tasks = br.lines().map(mapToTaskDetails).collect(Collectors.toList());
-      } catch (IOException e) {
-          e.printStackTrace();
-      }
-      return tasks;
-  }
+    private Function<String, TaskDetails> mapToTaskDetails = (line) -> {
+        String[] fields = line.split(",");
+        String name = fields[0].trim();
+        LocalDateTime time = timeUtils.getStringTime(fields[1].trim());
+        String stage = fields[2].trim();
+        long timeSpent = Long.parseLong(fields[3].trim());
+        String size = fields[4].trim();
+        String description = fields[5].trim();
 
-  private Function<String, TaskDetails> mapToTaskDetails = (line) -> {
-      String[] fields = line.split(",");
-
-      String name = fields[0].trim();
-
-      LocalDateTime time = timeUtils.getStringTime(fields[1].trim());
-
-      String stage = fields[2].trim();
-
-      long timeSpent = Long.parseLong(fields[3].trim());
-
-      String size = fields[4].trim();
-
-      String description = fields[5].trim();
-
-      return new TaskDetails(name, time, stage, timeSpent, size, description);
-  };
+        return new TaskDetails(name, time, stage, timeSpent, size, description);
+    };
 }
 
 class TaskDetails {
@@ -463,23 +478,12 @@ class TaskDetails {
         this.description = description != null ? description : "";
         this.size = size != null ? size : "";
     }
-    @Override
-    public String toString() {
-        return "TaskDetails{" +
-                "name='" + name + '\'' +
-                ", time='" + time.toString() + '\'' +
-                ", stage='" + stage + '\'' +
-                ", size='" + size + '\'' +
-                ", description='" + description + '\'' +
-                ", timeSpentTillNow=" + timeSpentTillNow +
-                '}';
-    }
 
     public String toCSVString() {
         return name + ", " + time.toString() + ", " + stage + ", "  +
                 timeSpentTillNow + ", " + size + ", " + description + " \n";
     }
-    // Provide setters for other fields
+
     public void setSize(String size) {
         this.size = size;
     }
@@ -495,8 +499,6 @@ class TaskDetails {
             this.description = description;
         }
     }
-
-    // Provide getters as needed
 
     public String getName() {
         return name;
@@ -525,6 +527,4 @@ class TaskDetails {
     public void setTimeSpentTillNow(long timeSpent) {
         this.timeSpentTillNow += timeSpent;
     }
-
 }
-
