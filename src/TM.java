@@ -365,9 +365,7 @@ class Summary {
 
   private static void printTask(TaskDetails task) {
     System.out.println("Task Name: " + task.getName());
-    if (task.getSize().isEmpty()) {
-      System.out.println("Task Size: " + task.getSize());
-    }
+    System.out.println("Task Size: " + task.getSize());
     System.out.println("Task Description: " + task.getDescription());
     System.out.println("Task Time: " + timeUtils
             .computeTime(task.getTimeSpentTillNow()));
