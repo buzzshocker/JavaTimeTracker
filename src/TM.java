@@ -26,148 +26,355 @@ public class TM extends errorHandler{
     private static void run(Parser parse){
       switch (parse.getFunction()) {
         case "start":
-          errorHandler.validateNumberOfArgs(parse.getSizeOfArgs(), 
+            errorHandler.validateNumberOfArgs(parse.getSizeOfArgs(), 
                                     (args) -> args == 2, "start", 
                                     "Invalid number of arguments");
           start(parse.getName());
-          break;
+            break;
         case "stop":
           errorHandler.validateNumberOfArgs(parse.getSizeOfArgs(), 
                                     (args) -> args == 2, "stop", 
                                     "Invalid number of arguments");
-          stop(parse.getName());
-          break;                                                                 
+            stop(parse.getName());
+            break;                                                                 
         case "summary":
           errorHandler.validateNumberOfArgs(parse.getSizeOfArgs(), 
                                     (args) -> args == 2 || args == 1,
                                     "summary", 
                                     "Invalid number of arguments");
-          if (parse.getSizeOfArgs() == 1) {
-            Summary.allSummary(tasks);
-          } else if (parse.getSizeOfArgs() == 2 && 
-              !errorHandler.doesSizeExist(errorHandler.Size.values(), 
-              parse.getSummarySize())) {
-            Summary.oneTask(tasks, parse.getName());
-          } else {
-            Summary.oneSize(tasks, parse.getSummarySize());
-          }
-          break;
+            summary(tasks, parse);
+            break;
         case "delete":
-          errorHandler.validateNumberOfArgs(parse.getSizeOfArgs(), 
+            errorHandler.validateNumberOfArgs(parse.getSizeOfArgs(), 
                                       (args) -> args == 2, "delete", 
                                       "Invalid number of arguments");
           delete(parse.getName());
-          break;
+            break;
         case "size":
-          errorHandler.validateNumberOfArgs(parse.getSizeOfArgs(), 
+            errorHandler.validateNumberOfArgs(parse.getSizeOfArgs(), 
                                       (args) -> args == 3, "size", 
                                       "Invalid number of arguments");
           size(parse.getName(), parse.getSize());
-          break;
+            break;
         case "rename":
-          errorHandler.validateNumberOfArgs(parse.getSizeOfArgs(), 
+            errorHandler.validateNumberOfArgs(parse.getSizeOfArgs(), 
                                       (args) -> args == 3, "rename", 
                                       "Invalid number of arguments");
           rename(parse.getName(), parse.getNewName());
-          break;
+            break;
         case "describe":
           errorHandler.validateNumberOfArgs(parse.getSizeOfArgs(), 
                                       (args) -> args == 3 || args == 4, 
                                       "describe", 
                                       "Invalid number of arguments");
-          if (parse.getSizeOfArgs() == 4) {
-            describe(parse.getName(), parse.getDescription(),
-              parse.getDescribeSize());
-          } else {
-              describe(parse.getName(), parse.getDescription(), "");
-          }
-          break;
+            describe(tasks, parse);
+            break;
         default:
           errorHandler.printError(parse.getFunction(), 
           "Invalid function");
       }
     }
 
-    private static void setTaskLog(List<TaskDetails> updatedTaskDetails) {
+    static void setTaskLog(List<TaskDetails> updatedTaskDetails) {
         tasks.clear();
         tasks.addAll(updatedTaskDetails);
         taskLog.logWrite(tasks);
     }
 
-    private static void addToTaskLog(TaskDetails task) {
+    static void addToTaskLog(TaskDetails task) {
         tasks.add(task);
         taskLog.logWrite(tasks);
     }
 
     private static void start(String name) {
-      LocalDateTime now = LocalDateTime.now(ZoneId.systemDefault());
-      List<TaskDetails> extractTasks = DSutils
-            .getNameMatchedTasks(tasks, name, false, "");
-      if (!extractTasks.isEmpty()) {
-          TaskDetails lastTask = extractTasks.get(extractTasks.size() - 1);
-          if (lastTask.getStage().equals("start")) {
-            startErrorHandler(name);
-          }
-          addToTaskLog(new TaskDetails(name, now, "start",
-                  lastTask.getTimeSpentTillNow(), lastTask.getSize(),
-                  lastTask.getDescription()));
-      } else {
-          addToTaskLog(new TaskDetails(name, now, "start", 0L,
-                  "", ""));
-      }
+        new startTask().execute(name, tasks, new String[0]);
     }
 
     private static void stop(String name) {
-      LocalDateTime now = LocalDateTime.now(ZoneId.systemDefault());
-      List<TaskDetails> extractedTasks = DSutils
-        .getNameMatchedTasks(tasks, name, false, "");
-      if (extractedTasks.isEmpty()) {
-          stopErrorHandler(name);
-      }
-      TaskDetails taskDetails = extractedTasks.get(extractedTasks.size() - 1);
-      if (taskDetails.getStage().equals("start")) {
-          taskDetails.setTimeSpentTillNow(timeUtils.
-                  getTimeSpent(taskDetails.getTime(), now));
-      } else {
-          stopErrorHandler(name);
-      }
-      addToTaskLog(new TaskDetails(name, now, "stop",
-              taskDetails.getTimeSpentTillNow(), taskDetails.getSize(),
-              taskDetails.getDescription()));
+      new stopTask().execute(name, tasks, new String[0]);
     }
 
+
     private static void delete(String name) {
-      validateTaskExists(name, tasks);
-      setTaskLog(DSutils
-        .getNameMatchedTasks(tasks, name, true, ""));
+        new deleteTask().execute(name, tasks, new String[0]);
     }
 
     private static void rename(String name, String newName) {
-      validateTaskExists(name, tasks);
-      setTaskLog(DSutils
-        .renameTasks(tasks, name, newName));
+        new renameTask().execute(name, tasks, new String[]{newName});
     }
 
-    private static void describe(String name, String description, String size) {
-      validateTaskExists(name, tasks);
-      size = DSutils.checkForSize(name, tasks, size);
-      setTaskLog(DSutils
-        .describeTasks(tasks, name, description, size.toUpperCase()));
+    private static void describe(List<TaskDetails> tasks, Parser parse) {
+        new describeTask()
+                .execute(tasks, parse);
     }
 
     private static void size(String name, String size) {
-      validateTaskExists(name, tasks);
-      sizeErrorHandler(name, size);
-      setTaskLog(DSutils.resizeTasks(tasks, name, size.toUpperCase()));
+        new sizeTask().execute(name, tasks, new String[]{size});
+    }
+
+    private static void summary(List<TaskDetails> tasks, Parser parse) {
+        new summaryTask().execute(tasks, parse);
     }
 }
+
+interface command {
+    void execute(String name, List<TaskDetails> tasks, String[] parameters);
+
+    static void printStatement(String type, String size, Long time){
+        System.out.println(
+                "The " + type + " time spent on tasks of size " + size + " is " +
+                        timeUtils.computeTime(time)
+        );
+    }
+}
+
+class startCommand {
+    public void run(String name, List<TaskDetails> tasks) {
+        LocalDateTime now = LocalDateTime.now(ZoneId.systemDefault());
+        List<TaskDetails> extractTasks = DSutils
+                .getNameMatchedTasks(tasks, name, false, "");
+        if (!extractTasks.isEmpty()) {
+            startTask(name, extractTasks, now);
+        } else {
+            TM.addToTaskLog(new TaskDetails(name, now, "start", 0L,
+                        "", ""));
+        }
+    }
+
+    private void startTask(String name, List<TaskDetails> tasks,
+                           LocalDateTime now) {
+        TaskDetails lastTask = tasks.get(tasks.size() - 1);
+        if (lastTask.getStage().equals("start")) {
+            errorHandler.startErrorHandler(name);
+        }
+        TM.addToTaskLog(new TaskDetails(name, now, "start",
+                lastTask.getTimeSpentTillNow(), lastTask.getSize(),
+                lastTask.getDescription()));
+    }
+}
+
+final class startTask implements command{
+    private final startCommand task;
+
+    public startTask() {
+        task = new startCommand();
+    }
+    public void execute(String name, List<TaskDetails> tasks,
+                        String[] params) {
+        task.run(name, tasks);
+    }
+}
+
+class stopCommand {
+
+    public void run(String name, List<TaskDetails> tasks) {
+        LocalDateTime now = LocalDateTime.now(ZoneId.systemDefault());
+        List<TaskDetails> extractedTasks = DSutils
+                .getNameMatchedTasks(tasks, name, false, "");
+        if (extractedTasks.isEmpty()) {
+            errorHandler.stopErrorHandler(name);
+        }
+        TaskDetails taskDetails = extractedTasks.get(extractedTasks.size() - 1);
+        if (taskDetails.getStage().equals("start")) {
+            taskDetails.setTimeSpentTillNow(timeUtils.
+                    getTimeSpent(taskDetails.getTime(), now));
+        } else {
+            errorHandler.stopErrorHandler(name);
+        }
+        TM.addToTaskLog(new TaskDetails(name, now, "stop",
+                taskDetails.getTimeSpentTillNow(), taskDetails.getSize(),
+                taskDetails.getDescription()));
+    }
+}
+
+final class stopTask implements command {
+    private final stopCommand task;
+
+    public stopTask() {
+        task = new stopCommand();
+    }
+
+    public void execute(String name, List<TaskDetails> tasks,
+                                     String[] params) {
+        task.run(name, tasks);
+    }
+}
+
+class sizeCommand {
+    public void run(String name, List<TaskDetails> tasks, String size) {
+        errorHandler.validateTaskExists(name, tasks);
+        errorHandler.sizeErrorHandler(name, size);
+        TM.setTaskLog(DSutils.resizeTasks(tasks, name, size.toUpperCase()));
+    }
+}
+
+final class sizeTask implements command {
+    private sizeCommand task;
+
+    public sizeTask() {
+        task = new sizeCommand();
+    }
+
+    public void execute(String name, List<TaskDetails> tasks, String[] params) {
+        task.run(name, tasks, params[0]);
+    }
+}
+
+class renameCommand {
+    public void run(String name, List<TaskDetails> tasks, String newName) {
+        errorHandler.validateTaskExists(name, tasks);
+        TM.setTaskLog(DSutils
+                .renameTasks(tasks, name, newName));
+    }
+}
+
+final class renameTask implements command {
+    private renameCommand task;
+
+    public renameTask() {
+        task = new renameCommand();
+    }
+
+    public void execute(String name, List<TaskDetails> tasks, String[] params) {
+        task.run(name, tasks, params[0]);
+    }
+}
+
+class deleteCommand {
+    public void run(String name, List<TaskDetails> tasks) {
+        errorHandler.validateTaskExists(name, tasks);
+        TM.setTaskLog(DSutils
+                .getNameMatchedTasks(tasks, name, true, ""));
+    }
+}
+
+final class deleteTask implements command {
+    private deleteCommand task;
+
+    public deleteTask() {
+        task = new deleteCommand();
+    }
+
+    public void execute(String name, List<TaskDetails> tasks, String[] params){
+        task.run(name, tasks);
+    }
+}
+
+interface parseCommand {
+    void execute(List<TaskDetails> tasks, Parser parse);
+}
+
+class describeCommand {
+    public void run(List<TaskDetails> tasks,
+                    Parser parse) {
+        if (parse.getSizeOfArgs() == 4) {
+            describe(parse.getName(), tasks, parse.getDescription(),
+                    parse.getDescribeSize());
+        } else {
+            describe(parse.getName(), tasks, parse.getDescription(), "");
+        }
+    }
+
+    public void describe(String name, List<TaskDetails> tasks,
+                         String description, String size) {
+        errorHandler.validateTaskExists(name, tasks);
+        size = DSutils.checkForSize(name, tasks, size);
+        TM.setTaskLog(DSutils
+                .describeTasks(tasks, name, description, size.toUpperCase()));
+    }
+}
+
+final class describeTask implements parseCommand {
+    private describeCommand task;
+
+    public describeTask() {
+        task = new describeCommand();
+    }
+
+    public void execute(List<TaskDetails> tasks, Parser parse) {
+        task.run(tasks, parse);
+    }
+}
+
+class summaryCommand {
+    public void sizeStatistics(String size, List<TaskDetails> tasks){
+        Map<String, List<TaskDetails>> taskSpecific = tasks.stream()
+                .collect(Collectors.groupingBy(TaskDetails::getName)
+                );
+        System.out.println("For Size " + size + ": ");
+        taskSpecific.forEach((k,v) -> {
+            v.forEach(this::printTask);
+        });
+
+        if (taskSpecific.size() >= 2) {
+
+            List<Long> time = taskSpecific.values().stream()
+                    .map(t -> t.get(t.size() - 1).getTimeSpentTillNow())
+                    .collect(Collectors.toList());
+            command.printStatement("max", size, Collections.max(time));
+            command.printStatement("min", size, Collections.min(time));
+            long fine_time = (long) time.stream().mapToLong(t -> t)
+                    .average().getAsDouble();
+            command.printStatement("average", size, fine_time);
+        }
+    }
+
+    public void printTask(TaskDetails task) {
+        System.out.println("\nTask Name: " + task.getName());
+        System.out.println("Task Size: " + task.getSize());
+        System.out.println("Task Description: " + task.getDescription());
+        System.out.println("Task Time: " + timeUtils
+                        .computeTime(task.getTimeSpentTillNow()) + "\n");
+    }
+
+    public void allSummary(List<TaskDetails> tasks) {
+        tasks.stream().collect(Collectors.groupingBy(TaskDetails::getName))
+                .forEach((name, task) -> {
+                            printTask(task.get(task.size() - 1));
+                        }
+                );
+    }
+
+    public void oneTask(List<TaskDetails> tasks, String task){
+        List<TaskDetails> specificTask = DSutils
+                .getNameMatchedTasks(tasks, task,false, "stop");
+        printTask(specificTask.get(specificTask.size() - 1));
+    }
+
+    public void oneSize(List<TaskDetails> tasks, String size) {
+        List<TaskDetails> tasksOfSpecifiedSize = DSutils
+                .getNameMatchedTasks(tasks, size.toUpperCase(), true, "stop");
+
+        sizeStatistics(size.toUpperCase(), tasksOfSpecifiedSize);
+    }
+}
+class summaryTask implements parseCommand {
+
+    private summaryCommand task;
+    public summaryTask() {
+        task = new summaryCommand();
+    }
+    @Override
+    public void execute(List<TaskDetails> tasks, Parser parse) {
+        if (parse.getSizeOfArgs() == 1) {
+            task.allSummary(tasks);
+        } else if (parse.getSizeOfArgs() == 2 &&
+                !errorHandler.doesSizeExist(errorHandler.Size.values(),
+                        parse.getSummarySize())) {
+            task.oneTask(tasks, parse.getName());
+        } else {
+            task.oneSize(tasks, parse.getSummarySize());
+        }
+    }
+}
+
 
 class Parser{
   private static Parser instance;
   
   private String[] args;
   
-  private Parser(String[] args) {
+  Parser(String[] args) {
     this.args = args;
   }
   
@@ -253,11 +460,13 @@ class errorHandler {
             .anyMatch(task -> task.getName().equals(name));
     if (!isPresent) {
       printError(name,"Task does not exist.");
+      printError(name,"Task does not exist.");
     }
   }
 
   public static void sizeErrorHandler(String name, String size) {
     if (!doesSizeExist(errorHandler.Size.values(), size)) {
+      printError(name, "Invalid size - " + size);
       printError(name, "Invalid size - " + size);
     }
   }
@@ -322,7 +531,6 @@ final class DSutils {
       }
       List<TaskDetails> matchedTasks =
               getNameMatchedTasks(tasks, name, false, "");
-
       TaskDetails task = matchedTasks.get(matchedTasks.size() - 1);
       if (!task.getSize().isEmpty()) {
           return task.getSize();
@@ -365,63 +573,6 @@ final class timeUtils {
   }
 }
 
-class Summary {
-
-  private static void printStatement(String type, String size, Long time){
-    System.out.println(
-      "The " + type + " time spent on tasks of size " + size + " is " + 
-      timeUtils.computeTime(time)
-    );
-  }
-
-  private static void sizeStatistics(String size, List<TaskDetails> tasks){
-    Map<String, List<TaskDetails>> taskSpecific = tasks.stream()
-      .collect(Collectors.groupingBy(TaskDetails::getName)
-    );
-    
-    if (taskSpecific.size() >= 2) {
-      List<Long> time = taskSpecific.values().stream()
-        .map(t -> t.get(t.size() - 1).getTimeSpentTillNow())
-        .collect(Collectors.toList());
-      
-      printStatement("max", size, Collections.max(time));
-      printStatement("min", size, Collections.min(time));
-      long fine_time = (long) time.stream().mapToLong(t -> t)
-              .average().getAsDouble();
-      printStatement("average", size, fine_time);
-    }
-  }
-
-  private static void printTask(TaskDetails task) {
-    System.out.println("Task Name: " + task.getName());
-    System.out.println("Task Size: " + task.getSize());
-    System.out.println("Task Description: " + task.getDescription());
-    System.out.println(
-      "Task Time: " + timeUtils.computeTime(task.getTimeSpentTillNow())
-    );
-  }
-
-  public static void allSummary(List<TaskDetails> tasks) {
-    tasks.stream().collect(Collectors.groupingBy(TaskDetails::getName))
-      .forEach((name, task) -> {
-        printTask(task.get(task.size() - 1));
-      }
-    );
-  }
-
-  public static void oneTask(List<TaskDetails> tasks, String task){
-    List<TaskDetails> specificTask = DSutils
-      .getNameMatchedTasks(tasks, task,false, "stop");
-    printTask(specificTask.get(specificTask.size() - 1));
-  }
-
-  public static void oneSize(List<TaskDetails> tasks, String size) {
-    List<TaskDetails> tasksOfSpecifiedSize = DSutils
-      .getNameMatchedTasks(tasks, size, true, "stop");
-    sizeStatistics(size, tasksOfSpecifiedSize);
-  }
-
-}
 
 class Log {
   private static Log instance;
