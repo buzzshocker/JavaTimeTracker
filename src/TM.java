@@ -336,15 +336,14 @@ class summaryCommand {
     }
 
     public void oneTask(List<TaskDetails> tasks, String task){
-        List<TaskDetails> specificTask = DSutils
-                .getNameMatchedTasks(tasks, task,false, "stop");
+        List<TaskDetails> specificTask =  tasks.stream().filter(t -> t.getName()
+                .equals(task)).collect(Collectors.toList());
         printTask(specificTask.get(specificTask.size() - 1));
     }
 
     public void oneSize(List<TaskDetails> tasks, String size) {
         List<TaskDetails> tasksOfSpecifiedSize = DSutils
                 .getNameMatchedTasks(tasks, size.toUpperCase(), true, "stop");
-
         sizeStatistics(size.toUpperCase(), tasksOfSpecifiedSize);
     }
 }
